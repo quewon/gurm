@@ -559,10 +559,10 @@ function hmrAccept(bundle, id) {
 },{}],"9hTyP":[function(require,module,exports) {
 var _three = require("three");
 class Game {
-    constructor(p){
-        p = p || {};
-        this.scenes = p.scenes || [];
-        this.currentSceneId = p.currentSceneId || 0;
+    constructor(assets){
+        this.scenes = [];
+        this.currentSceneId = -1;
+        this.assets = assets;
         var renderer = new _three.WebGLRenderer({
             alpha: true
         });
@@ -594,12 +594,22 @@ class Game {
             y: (e.pageY - this.rect.top) / this.rect.height
         });
     }
-    setScene(id) {
+    setScene(id, dontFadeIn) {
+        document.body.classList.remove("fade-in");
+        if (!dontFadeIn) document.body.classList.add("fade-out");
         const currentScene = this.scenes[this.currentSceneId];
         if (currentScene) currentScene.end();
-        this.currentSceneId = id;
-        this.scenes[id].start();
-        const camera = this.scenes[id]._camera;
+        document.body.classList.remove("pointer");
+        this.nextSceneId = id;
+        if (dontFadeIn) this.startScene(dontFadeIn);
+    }
+    startScene(dontFadeIn) {
+        if (this.scenes[this.currentSceneId]) this.scenes[this.currentSceneId].endAfterFade();
+        this.currentSceneId = this.nextSceneId;
+        document.body.classList.remove("fade-out");
+        if (!dontFadeIn) document.body.classList.add("fade-in");
+        this.scenes[this.currentSceneId].start();
+        const camera = this.scenes[this.currentSceneId]._camera;
         camera.aspect = this.width / this.height;
         camera.left = this.width / -2;
         camera.right = this.width / 2;
@@ -631,7 +641,10 @@ class Scene {
     constructor(game){
         this.init_scene();
         this.init_camera();
-        if (game) game.scenes.push(this);
+        if (game) {
+            this.game = game;
+            game.scenes.push(this);
+        }
     }
     init_scene() {
         var scene = new _three.Scene();
@@ -644,9 +657,7 @@ class Scene {
         this._scene = scene;
     }
     init_camera() {
-        var camera = new _three.PerspectiveCamera(45, 1, .1, 1000);
-        camera.position.set(10, 0, 0);
-        camera.lookAt(0, 0, 0);
+        var camera = new _three.PerspectiveCamera();
         this._camera = camera;
     }
     addAsset(asset) {
@@ -654,10 +665,10 @@ class Scene {
         this._scene.add(mesh);
         return mesh;
     }
+    startBeforeFade() {}
     start() {}
-    end() {
-        document.body.classList.remove("pointer");
-    }
+    end() {}
+    endAfterFade() {}
     update() {}
     mousemove(e) {}
     click(e) {}
@@ -666,6 +677,19 @@ class Scene {
         raycaster.setFromCamera(new _three.Vector2(e.x * 2 - 1, -e.y * 2 + 1), this._camera);
         var intersects = raycaster.intersectObjects(this._scene.children);
         return intersects;
+    }
+    getMeshScreenPosition(mesh, offsetX, offsetY) {
+        const pos = mesh.position.clone();
+        pos.x += offsetX || 0;
+        pos.y += offsetY || 0;
+        const rect = this.game.rect;
+        pos.project(this._camera);
+        pos.x = (0.5 + pos.x / 2) * rect.width;
+        pos.y = (0.5 + -pos.y / 2) * rect.height;
+        return {
+            x: pos.x,
+            y: pos.y
+        };
     }
     render(renderer) {
         this.update();
@@ -30434,6 +30458,6 @@ exports.export = function(dest, destName, get) {
     });
 };
 
-},{}]},["c1vsD","9hTyP"], "9hTyP", "parcelRequirecfaa")
+},{}]},["c1vsD","9hTyP"], "9hTyP", "parcelRequire94c2")
 
 //# sourceMappingURL=index.9b68c836.js.map

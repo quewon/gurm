@@ -3,10 +3,16 @@
   <head>
     <meta charset="utf-8">
     <title>☁</title>
-    <link rel="stylesheet" href="/index.90d15325.css">
+    <link rel="stylesheet" href="/index.dc11ed13.css">
+    <link rel="stylesheet" href="/index.1fbda49e.css">
     <style media="screen">body, html {
+  word-break: keep-all;
   margin: 0;
   overflow: hidden;
+}
+
+html {
+  background: #000;
 }
 
 body.pointer, body.pointer * {
@@ -41,6 +47,12 @@ canvas {
   transform: translate(-50%, -50%);
 }
 
+#game-ui > div {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
 h1 {
   font-size: 10vh;
 }
@@ -49,18 +61,41 @@ div {
   position: absolute;
 }
 
-#mainmenu {
-  pointer-events: none;
-  top: 10%;
-  left: 10%;
-}
-
 .gone {
   display: none;
 }
 
+body.fade-out {
+  animation: 1s ease-in fade-out;
+}
+
+body.fade-in {
+  animation: 1s ease-out fade-in;
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
 body.clouds .bg {
   content: url("clouds.5d23f746.jpg");
+  animation: 3s infinite cycle-clouds;
 }
 
 body.office .bg {
@@ -69,22 +104,37 @@ body.office .bg {
 
 </style>
   </head>
-  <body>
+  <body class="clouds">
+
+    <!-- preloader -->
+    <div class="gone">
+      <img src="/clouds.5d23f746.jpg">
+      <img src="/clouds2.22c6cab0.jpg">
+      <img src="/clouds3.d4752ccf.jpg">
+      <img src="/clouds4.2c6e2ac4.jpg">
+      <img src="/clouds5.f00e678f.jpg">
+      <img src="/skyline.35e571ea.jpg">
+    </div>
 
     <img class="bg">
 
     <div id="game-ui">
       <div id="mainmenu" class="gone">
-        <h1>
-          구름이<br>
-          멈춘다면
-        </h1>
-        <span>제작: 구름구릅</span>
+        <div id="start-indicator">시작하려면 핸드폰을 클릭해주세요</div>
+        <div style="position: absolute; top: 10%; left: 10%">
+          <h1>
+            구름이<br>
+            멈춘다면
+          </h1>
+          <span>제작: 구름구릅</span>
+        </div>
       </div>
 
-      <div id="computer-screen" class="gone">
-        hello
-        <button>로그인</button>
+      <div id="office" class="gone">
+        <div id="computer-indicator">v</div>
+        <div id="computer-screen" class="gone">
+          <button>로그인</button>
+        </div>
       </div>
     </div>
 

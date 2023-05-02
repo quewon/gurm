@@ -557,9 +557,11 @@ function hmrAccept(bundle, id) {
 }
 
 },{}],"l17dj":[function(require,module,exports) {
-var _three = require("three");
 var _gameJs = require("./game.js");
 var _assetloaderJs = require("./assetloader.js");
+var _officeJs = require("./scenes/office.js");
+var _busJs = require("./scenes/bus.js");
+var _mainmenuJs = require("./scenes/mainmenu.js");
 // load assets
 var assets = {
     "office": new URL(require("4e5584ff3883f28c")),
@@ -571,14 +573,12 @@ assetLoader.onload = function(a) {
     start();
 };
 // runs after assets have loaded
-var game;
-var bus, office, mainmenu;
 function start() {
-    game = new (0, _gameJs.Game)();
-    mainmenu = new MainMenu(game);
-    office = new Office(game);
-    bus = new Bus(game);
-    game.setScene(0);
+    game = new (0, _gameJs.Game)(assets);
+    mainmenu = new (0, _mainmenuJs.MainMenu)(game);
+    office = new (0, _officeJs.Office)(game);
+    bus = new (0, _busJs.Bus)(game);
+    game.setScene(0, true);
     document.addEventListener("click", function(e) {
         game.click(e);
     });
@@ -588,6 +588,9 @@ function start() {
     window.addEventListener("resize", function() {
         game.resize();
     });
+    document.body.onanimationend = function() {
+        if (this.classList.contains("fade-out")) game.startScene();
+    };
     game.resize();
     draw();
 }
@@ -596,183 +599,11 @@ function draw() {
     requestAnimationFrame(draw);
 }
 //
-class Office extends (0, _gameJs.Scene) {
-    constructor(game){
-        super(game);
-        const officemesh = this.addAsset(assets["office"]);
-        officemesh.position.set(0, -10, 0);
-        this.domelement = document.getElementById("computer-screen");
-        this._camera.position.set(-50, 50, -50);
-        this.Computer;
-        this.Player1;
-        this.PlayerTime = 0;
-        this.PlayerOrigin;
-        this.PlayerDestination;
-        this.CameraTime = -1;
-        this.CameraDestination;
-        this.CameraDestinationRotation;
-        for (let mesh of officemesh.children)switch(mesh.name){
-            case "Computer":
-                this.Computer = mesh;
-                this.CameraDestination = mesh.position.clone();
-                this.CameraDestination.y -= 10;
-                this.CameraDestination.x -= 6;
-                let camrot = mesh.quaternion.clone();
-                // camrot.w = 0;
-                // camrot.y = 1;
-                camrot.w = 0.707107;
-                camrot.y = -0.707107;
-                this.CameraDestinationRotation = camrot;
-                break;
-            case "Player1":
-                this.PlayerOrigin = mesh.position.clone();
-                this.Player1 = mesh;
-                this.Player1.material.transparent = true;
-                break;
-            case "Player2":
-                this.PlayerDestination = mesh.position;
-                this._camera.lookAt(this.PlayerDestination.x, this.PlayerDestination.y, this.PlayerDestination.z);
-                mesh.removeFromParent();
-                break;
-        }
-        this.CameraOrigin = this._camera.position.clone();
-        this.CameraOriginRotation = this._camera.quaternion.clone();
-    }
-    start() {
-        document.body.classList.add("office");
-        if (this.CameraTime >= 1) this.domelement.classList.remove("gone");
-    }
-    end() {
-        document.body.classList.remove("office");
-        this.domelement.classList.add("gone");
-    }
-    update() {
-        if (this.PlayerTime < 1) {
-            this.PlayerTime += .01;
-            let newpos = this.PlayerOrigin.clone();
-            newpos.lerp(this.PlayerDestination, _three.MathUtils.smoothstep(this.PlayerTime, 0, 1));
-            this.Player1.position.set(newpos.x, newpos.y, newpos.z);
-            if (this.PlayerTime >= 1) this.CameraTime = 0;
-        }
-        if (this.CameraTime != -1 && this.CameraTime < 1) {
-            this.CameraTime += .01;
-            const step = _three.MathUtils.smoothstep(this.CameraTime, 0, 1);
-            let newpos = this.CameraOrigin.clone();
-            newpos.lerp(this.CameraDestination, step);
-            let newrot = this.CameraOriginRotation.clone();
-            newrot.slerp(this.CameraDestinationRotation, step);
-            this._camera.position.set(newpos.x, newpos.y, newpos.z);
-            this._camera.quaternion.set(newrot.x, newrot.y, newrot.z, newrot.w);
-            this.Player1.material.opacity = 1 - step;
-            if (this.CameraTime >= 1) this.domelement.classList.remove("gone");
-        }
-    }
-}
-class Bus extends (0, _gameJs.Scene) {
-    constructor(game){
-        super(game);
-        const busmesh = this.addAsset(assets["bus"]);
-        this.Button;
-        this.Phone;
-        for (let mesh of busmesh.children)if ("isCamera" in mesh) {
-            const p = mesh.position;
-            const r = mesh.rotation;
-            this._camera.position.set(p.x, p.y + .2, p.z);
-            this._camera.rotation.set(r.x, r.y, r.z);
-        } else {
-            if (mesh.name == "Button") this.Button = mesh;
-            else if (mesh.name == "Screen") this.Phone = mesh;
-        }
-    }
-    start() {
-        document.body.classList.add("clouds");
-    }
-    end() {
-        document.body.classList.remove("clouds");
-    }
-    init_camera() {
-        var camera = new _three.PerspectiveCamera();
-        camera.zoom = 2;
-        this._camera = camera;
-    }
-    update() {}
-    mousemove(e) {
-        var intersects = this.raycast(e);
-        var buttonHovered = false;
-        var phoneHovered = false;
-        if (intersects.length > 0) switch(intersects[0].object){
-            case this.Button:
-                buttonHovered = true;
-                break;
-            case this.Phone:
-                phoneHovered = true;
-                break;
-        }
-        if (!buttonHovered) this.buttonUnhover();
-        if (!phoneHovered) this.phoneUnhover();
-        if (buttonHovered) this.buttonHover();
-        if (phoneHovered) this.phoneHover();
-    }
-    click(e) {
-        var intersects = this.raycast(e);
-        var buttonClicked = false;
-        var phoneClicked = false;
-        if (intersects.length > 0) switch(intersects[0].object){
-            case this.Button:
-                buttonClicked = true;
-                break;
-            case this.Phone:
-                phoneClicked = true;
-                break;
-        }
-        if (buttonClicked) this.buttonClick();
-        if (phoneClicked) this.phoneClick();
-    }
-    buttonHover() {
-        document.body.classList.add("pointer");
-        this.Button.material.transmission = 1;
-        this.Button.material.opacity = 0;
-    }
-    buttonUnhover() {
-        document.body.classList.remove("pointer");
-        this.Button.material.transmission = 0;
-        this.Button.material.opacity = 1;
-    }
-    buttonClick() {}
-    phoneHover() {
-        document.body.classList.add("pointer");
-        this.Phone.material.transmission = 1;
-        this.Phone.material.opacity = 0;
-    }
-    phoneUnhover() {
-        document.body.classList.remove("pointer");
-        this.Phone.material.transmission = 0;
-        this.Phone.material.opacity = 1;
-    }
-    phoneClick() {}
-}
-class MainMenu extends Bus {
-    constructor(game){
-        super(game);
-        this.domelement = document.getElementById("mainmenu");
-    }
-    start() {
-        document.body.classList.add("clouds");
-        this.domelement.classList.remove("gone");
-    }
-    end() {
-        document.body.classList.remove("clouds");
-        this.domelement.classList.add("gone");
-        document.body.classList.remove("pointer");
-    }
-    buttonHover() {}
-    buttonUnhover() {}
-    phoneClick() {
-        game.setScene(1);
-    }
-}
+module.exports = {
+    assets
+};
 
-},{"three":"ktPTu","./game.js":"9hTyP","./assetloader.js":"iyQYz","4e5584ff3883f28c":"16C35","667cbb264d87539a":"4M0LO"}],"iyQYz":[function(require,module,exports) {
+},{"./game.js":"9hTyP","./assetloader.js":"iyQYz","4e5584ff3883f28c":"16C35","667cbb264d87539a":"4M0LO","./scenes/office.js":"iLGK0","./scenes/bus.js":"3GsZZ","./scenes/mainmenu.js":"jaGJ5"}],"iyQYz":[function(require,module,exports) {
 var _three = require("three");
 var _gltfloaderJs = require("three/examples/jsm/loaders/GLTFLoader.js");
 class AssetLoader {
@@ -3798,6 +3629,277 @@ exports.getOrigin = getOrigin;
 },{}],"4M0LO":[function(require,module,exports) {
 module.exports = require("85bc18ba88db4268").getBundleURL("eTM5S") + "bus.3bc8dab1.glb" + "?" + Date.now();
 
-},{"85bc18ba88db4268":"jMDco"}]},["dTSMY","l17dj"], "l17dj", "parcelRequirecfaa")
+},{"85bc18ba88db4268":"jMDco"}],"iLGK0":[function(require,module,exports) {
+var _three = require("three");
+var _initJs = require("../init.js");
+var _gameJs = require("../game.js");
+var _sfxJs = require("../sfx.js");
+class Office extends (0, _gameJs.Scene) {
+    constructor(game){
+        super(game);
+        const officemesh = this.addAsset(this.game.assets["office"]);
+        officemesh.position.set(0, -10, 0);
+        this.domelement = document.getElementById("office");
+        this.computerScreen = document.getElementById("computer-screen");
+        this.computerIndicator = document.getElementById("computer-indicator");
+        this._camera.position.set(-60, 60, -60);
+        this._camera.lookAt(0, 0, 0);
+        this.Computer;
+        this.Player1;
+        this.PlayerTime = -1;
+        this.PlayerOrigin;
+        this.PlayerDestination;
+        this.CameraTime = -1;
+        this.CameraDestination;
+        this.CameraDestinationRotation;
+        for (let mesh of officemesh.children)switch(mesh.name){
+            case "Computer":
+                this.Computer = mesh;
+                this.CameraDestination = mesh.position.clone();
+                this.CameraDestination.y -= 10;
+                this.CameraDestination.x -= 7;
+                let camrot = mesh.quaternion.clone();
+                // camrot.w = 0;
+                // camrot.y = 1;
+                camrot.w = 0.707107;
+                camrot.y = -0.707107;
+                this.CameraDestinationRotation = camrot;
+                break;
+            case "Player1":
+                this.PlayerOrigin = mesh.position.clone();
+                this.Player1 = mesh;
+                this.Player1.material.transparent = true;
+                break;
+            case "Player2":
+                this.PlayerDestination = mesh.position;
+                mesh.removeFromParent();
+                break;
+        }
+        this.CameraOrigin = this._camera.position.clone();
+        this.CameraOriginQuaternion = this._camera.quaternion.clone();
+    }
+    start() {
+        this.domelement.classList.remove("gone");
+        document.body.classList.add("office");
+        if (this.CameraTime >= 1) (0, _sfxJs.sfx)("computer switch");
+    }
+    end() {
+        this.domelement.classList.add("gone");
+    }
+    endAfterFade() {
+        document.body.classList.remove("office");
+    }
+    mousemove(e) {
+        var intersects = this.raycast(e);
+        var computerHovered = false;
+        if (intersects.length > 0) switch(intersects[0].object){
+            case this.Computer:
+                computerHovered = true;
+                break;
+        }
+        if (!computerHovered) this.computerUnhover();
+        if (computerHovered) this.computerHover();
+    }
+    click(e) {
+        var intersects = this.raycast(e);
+        var computerClicked = false;
+        if (intersects.length > 0) switch(intersects[0].object){
+            case this.Computer:
+                computerClicked = true;
+                break;
+        }
+        if (computerClicked) this.computerClick();
+    }
+    computerHover() {
+        if (this.PlayerTime != -1) return;
+        document.body.classList.add("pointer");
+        this.Computer.material.transmission = 1;
+        this.Computer.material.opacity = 0;
+    }
+    computerUnhover() {
+        if (this.PlayerTime != -1) return;
+        document.body.classList.remove("pointer");
+        this.Computer.material.transmission = 0;
+        this.Computer.material.opacity = 1;
+    }
+    computerClick() {
+        if (this.PlayerTime != -1) return;
+        this.computerUnhover();
+        this.PlayerTime = 0;
+        (0, _sfxJs.sfx)("click");
+        this.computerIndicator.classList.add("gone");
+    }
+    update() {
+        if (this.PlayerTime == -1) {
+            let pos = this.getMeshScreenPosition(this.Computer, 0, -10);
+            this.computerIndicator.style.left = pos.x + "px";
+            this.computerIndicator.style.top = pos.y + "px";
+        }
+        if (this.PlayerTime != -1 && this.PlayerTime < 1) {
+            this.PlayerTime += .005;
+            let newpos = this.PlayerOrigin.clone();
+            newpos.lerp(this.PlayerDestination, _three.MathUtils.smoothstep(this.PlayerTime, 0, 1));
+            this.Player1.position.set(newpos.x, newpos.y, newpos.z);
+            if (this.CameraTime == -1 && this.PlayerTime >= .1) this.CameraTime = 0;
+        }
+        if (this.CameraTime != -1 && this.CameraTime < 1) {
+            this.CameraTime += .0025;
+            const step = _three.MathUtils.smootherstep(this.CameraTime, 0, 1);
+            let newpos = this.CameraOrigin.clone();
+            newpos.lerp(this.CameraDestination, step);
+            let newrot = this.CameraOriginQuaternion.clone();
+            newrot.slerp(this.CameraDestinationRotation, step);
+            this._camera.position.set(newpos.x, newpos.y, newpos.z);
+            this._camera.quaternion.set(newrot.x, newrot.y, newrot.z, newrot.w);
+            this.Player1.material.opacity = 1 - step;
+            if (this.CameraTime >= 1) {
+                this.computerScreen.classList.remove("gone");
+                (0, _sfxJs.sfx)("computer switch");
+            }
+        }
+    }
+}
+module.exports = {
+    Office
+};
+
+},{"../init.js":"l17dj","../game.js":"9hTyP","three":"ktPTu","../sfx.js":"lAOJJ"}],"lAOJJ":[function(require,module,exports) {
+var sounds = {
+    "click": null,
+    "computer switch": null
+};
+function sfx(name) {}
+module.exports = {
+    sfx
+};
+
+},{}],"3GsZZ":[function(require,module,exports) {
+var _three = require("three");
+var _initJs = require("../init.js");
+var _gameJs = require("../game.js");
+class Bus extends (0, _gameJs.Scene) {
+    constructor(game){
+        super(game);
+        const busmesh = this.addAsset(this.game.assets["bus"]);
+        this.Button;
+        this.Phone;
+        for (let mesh of busmesh.children)if ("isCamera" in mesh) {
+            const p = mesh.position;
+            const r = mesh.rotation;
+            this._camera.position.set(p.x, p.y, p.z);
+            this._camera.rotation.set(r.x, r.y, r.z);
+        } else {
+            if (mesh.name == "Button") this.Button = mesh;
+            else if (mesh.name == "Screen") this.Phone = mesh;
+        }
+        this._camera.zoom = 2;
+        this.CameraOriginRotation = this._camera.rotation.clone();
+    }
+    start() {
+        document.body.classList.add("clouds");
+    }
+    endAfterFade() {
+        document.body.classList.remove("clouds");
+    }
+    update() {}
+    mousemove(e) {
+        var intersects = this.raycast(e);
+        var buttonHovered = false;
+        var phoneHovered = false;
+        if (intersects.length > 0) switch(intersects[0].object){
+            case this.Button:
+                buttonHovered = true;
+                break;
+            case this.Phone:
+                phoneHovered = true;
+                break;
+        }
+        if (!buttonHovered) this.buttonUnhover();
+        if (!phoneHovered) this.phoneUnhover();
+        if (buttonHovered) this.buttonHover();
+        if (phoneHovered) this.phoneHover();
+        //
+        let rot = this.CameraOriginRotation.clone();
+        rot.x = rot.x - e.y / 100;
+        rot.y = rot.y - e.x / 100;
+        this._camera.rotation.set(rot.x, rot.y, rot.z);
+    }
+    click(e) {
+        var intersects = this.raycast(e);
+        var buttonClicked = false;
+        var phoneClicked = false;
+        if (intersects.length > 0) switch(intersects[0].object){
+            case this.Button:
+                buttonClicked = true;
+                break;
+            case this.Phone:
+                phoneClicked = true;
+                break;
+        }
+        if (buttonClicked) this.buttonClick();
+        if (phoneClicked) this.phoneClick();
+    }
+    buttonHover() {
+        document.body.classList.add("pointer");
+        this.Button.material.transmission = 1;
+        this.Button.material.opacity = 0;
+    }
+    buttonUnhover() {
+        document.body.classList.remove("pointer");
+        this.Button.material.transmission = 0;
+        this.Button.material.opacity = 1;
+    }
+    buttonClick() {}
+    phoneHover() {
+        document.body.classList.add("pointer");
+        this.Phone.material.transmission = 1;
+        this.Phone.material.opacity = 0;
+    }
+    phoneUnhover() {
+        document.body.classList.remove("pointer");
+        this.Phone.material.transmission = 0;
+        this.Phone.material.opacity = 1;
+    }
+    phoneClick() {}
+}
+module.exports = {
+    Bus
+};
+
+},{"three":"ktPTu","../init.js":"l17dj","../game.js":"9hTyP"}],"jaGJ5":[function(require,module,exports) {
+var _three = require("three");
+var _initJs = require("../init.js");
+var _busJs = require("./bus.js");
+class MainMenu extends (0, _busJs.Bus) {
+    constructor(game1){
+        super(game1);
+        this.domelement = document.getElementById("mainmenu");
+        this.startIndicator = document.getElementById("start-indicator");
+    }
+    start() {
+        this.domelement.classList.remove("gone");
+    }
+    end() {
+        this.domelement.classList.add("gone");
+    }
+    buttonHover() {}
+    buttonUnhover() {}
+    phoneClick() {
+        if (this.phoneClicked) return;
+        game.setScene(1);
+        this.startIndicator.classList.add("gone");
+        this.phoneClicked = true;
+    }
+    update() {
+        let pos = this.getMeshScreenPosition(this.Phone);
+        this.startIndicator.style.left = pos.x + "px";
+        this.startIndicator.style.top = pos.y + "px";
+    }
+}
+module.exports = {
+    MainMenu
+};
+
+},{"three":"ktPTu","../init.js":"l17dj","./bus.js":"3GsZZ"}]},["dTSMY","l17dj"], "l17dj", "parcelRequire94c2")
 
 //# sourceMappingURL=index.43d43591.js.map

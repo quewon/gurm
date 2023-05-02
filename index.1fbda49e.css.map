@@ -1,0 +1,1 @@
+{"mappings":"AAAA;;;;AAIA","sources":["src/css/mainmenu.css"],"sourcesContent":["#mainmenu {\n  pointer-events: none;\n}\n\n#start-indicator {\n  text-align: center;\n  transform: translate(-50%, -50%);\n  background: black;\n  color: white;\n}\n"],"names":[],"version":3,"file":"index.1fbda49e.css.map","sourceRoot":"/__parcel_source_root/"}
